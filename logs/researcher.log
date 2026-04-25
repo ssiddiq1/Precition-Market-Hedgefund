@@ -1,0 +1,77 @@
+[researcher] Running every 60min → /Users/shayaansiddique/quant-os/logs/reports/
+[researcher] Starting analysis — 2026-04-25T23:21:54.598130+00:00
+[researcher] Report → /Users/shayaansiddique/quant-os/logs/reports/report_2026-04-25T23-21-54.md
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_spread_distribution.png
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_cross_correlation.png
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_momentum_convergence.png
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_spread_persistence.png
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_spread_vs_direction.png
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_lock_vs_volatility.png
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_persistence_by_tod.png
+[researcher] Chart  → /Users/shayaansiddique/quant-os/logs/charts/2026-04-25T23-21-54_first_tick_spread_vs_direction.png
+[researcher] Log    → /Users/shayaansiddique/quant-os/logs/research_log.md
+
+[researcher] 21 proposed action(s) — 2026-04-25T23:21:54.598130+00:00
+
+  [33m[STRATEGY][0m If mean spread is consistently non-zero, consider a mean-reversion entry when spread exceeds 1.5× std
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Track whether spread sign (positive vs negative) correlates with BTC price direction
+  Implement this? (y/n/later):   → Skipped
+
+  [35m[CODE][0m Add spread z-score alert when |spread| > 2σ in collector
+  Implement this? (y/n/later):   → Skipped
+
+  [33m[STRATEGY][0m If one exchange reliably leads by 1–2 min, use the lagged signal as an entry trigger on the follower
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Re-run on longer dataset once 500+ matched rows are available
+  Implement this? (y/n/later):   → Skipped
+
+  [35m[CODE][0m Add real-time lag indicator to dashboard
+  Implement this? (y/n/later):   → Skipped
+
+  [33m[STRATEGY][0m Enter position at the start of a new 15-min window and exit at avg lock-in time (~8 min) if probability has moved
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Check if time-to-lock correlates with BTC volatility (VIX proxy)
+  Implement this? (y/n/later):   → Skipped
+
+  [35m[CODE][0m Real-time countdown to expected lock-in on dashboard
+  Implement this? (y/n/later):   → Skipped
+
+  [33m[STRATEGY][0m Fast reversion → tighter stops, smaller hold time.
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Segment persistence by time-of-day and BTC volatility
+  Implement this? (y/n/later):   → Skipped
+
+  [35m[CODE][0m Add persistence score as a live signal on dashboard
+  Implement this? (y/n/later):   → Skipped
+
+  [33m[STRATEGY][0m Use positive spread as weak UP signal for entry timing
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Re-test with 50+ windows and first-tick spread (not avg) as predictor
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Add external BTC realized vol (from Binance/CoinGecko) to see if macro vol predicts lock speed
+  Implement this? (y/n/later):   → Skipped
+
+  [33m[STRATEGY][0m In high-vol windows, adjust exit timing relative to avg lock-in
+  Implement this? (y/n/later):   → Skipped
+
+  [33m[STRATEGY][0m Prefer trading in 00-06 UTC when spread is large — highest persistence
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Add day-of-week dimension once 7+ days of data are collected
+  Implement this? (y/n/later):   → Skipped
+
+  [33m[STRATEGY][0m No actionable signal yet — accumulate more windows
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Compare r here vs Finding 5 r to quantify whether first-tick is cleaner than avg-window spread
+  Implement this? (y/n/later):   → Skipped
+
+  [36m[RESEARCH][0m Test first-tick spread as a feature in the cross-market RF (Strategy Explorer)
+  Implement this? (y/n/later): 
