@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>quant-os</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+<style>
+  :root {
+    --accent:   #1D9E75;
+    --loss:     #A32D2D;
+    --bg0:      #0A0D10;
+    --bg1:      #10151A;
+    --bg2:      #181E24;
+    --border:   #232A31;
+    --text:     #D6DCE2;
+    --muted:    #6F7880;
+    --muted2:   #9199A1;
+    --warn:     #B89428;
+  }
+  [data-theme="light"] {
+    --bg0:    #FAFAF8;
+    --bg1:    #FFFFFF;
+    --bg2:    #F1F1EE;
+    --border: #D5D5D0;
+    --text:   #121518;
+    --muted:  #6B7076;
+    --muted2: #4B4E53;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg0); color: var(--text);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 13px; line-height: 1.4;
+  }
+  .mono, .num, table.grid td, table.grid th, .tick {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .num { text-align: right; }
+
+  /* Header */
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px; border-bottom: 1px solid var(--border);
+    background: var(--bg1);
+  }
+  header.topbar .title { font-weight: 600; letter-spacing: 0.06em; }
+  header.topbar .title .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); margin-right: 8px; vertical-align: middle;
+  }
+  header.topbar .right { display: flex; gap: 18px; align-items: center; }
+  header.topbar .status { color: var(--muted); }
+  header.topbar .status b { color: var(--text); font-weight: 500; }
+  header.topbar .theme-toggle {
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    padding: 3px 10px; cursor: pointer; font-family: inherit; font-size: 12px;
+  }
+  header.topbar .theme-toggle:hover { color: var(--text); }
+
+  /* Tab strip */
+  nav.tabs {
+    display: flex; border-bottom: 1px solid var(--border);
+    background: var(--bg1);
+  }
+  nav.tabs .tab {
+    padding: 10px 24px; cursor: pointer; color: var(--muted);
+    border-bottom: 2px solid transparent;
+    font-weight: 500; letter-spacing: 0.04em;
+  }
+  nav.tabs .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  nav.tabs .tab:hover { color: var(--text); }
+
+  /* Layout */
+  main { padding: 16px 18px 36px; }
+  .panel {
+    background: var(--bg1); border: 1px solid var(--border);
+    padding: 14px 16px; margin-bottom: 14px;
+  }
+  .panel h3 {
+    margin: 0 0 8px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase;
+  }
+  .panel p.caption {
+    margin: 8px 0 0; font-size: 11px; color: var(--muted);
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  /* Metric cards */
+  .metric { background: var(--bg2); padding: 12px 14px; border: 1px solid var(--border); }
+  .metric .label { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+  .metric .value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; margin-top: 4px; font-variant-numeric: tabular-nums; font-weight: 500; }
+  .metric .sub   { font-size: 11px; color: var(--muted2); margin-top: 4px; }
+  .metric.teal .value { color: var(--accent); }
+  .metric.loss .value { color: var(--loss); }
+
+  /* Tables */
+  table.grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.grid th, table.grid td {
+    text-align: left; padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.grid th {
+    color: var(--muted); font-weight: 500; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  table.grid tbody tr:hover { background: var(--bg2); }
+  table.grid td.num { text-align: right; }
+  table.grid td.pos { color: var(--accent); }
+  table.grid td.neg { color: var(--loss); }
+  table.grid td.muted { color: var(--muted); }
+  table.grid tr.dim td { color: var(--muted); }
+  .tag {
+    font-size: 10px; letter-spacing: 0.06em;
+    background: var(--bg2); display: inline-block; padding: 1px 6px;
+    border: 1px solid var(--border);
+  }
+
+  /* Orderbook */
+  .book {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    background: var(--bg2); border: 1px solid var(--border); padding: 10px 12px;
+  }
+  .book .side .exch {
+    font-size: 10px; color: var(--muted); letter-spacing: 0.12em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .book .side .row {
+    display: grid; grid-template-columns: 74px 1fr 1fr; gap: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    padding: 2px 0;
+  }
+  .book .side .row span.tag-book { color: var(--muted); font-size: 10px; align-self: center; }
+  .book .side .row span.px  { text-align: right; font-variant-numeric: tabular-nums; }
+  .book .side .row.yes span.px { color: var(--accent); }
+  .book .side .row.no  span.px { color: var(--loss); }
+  .edge-plate {
+    grid-column: 1 / -1; margin-top: 8px; padding: 8px 10px;
+    background: var(--bg0); border: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .edge-plate .big {
+    font-size: 22px; font-weight: 600; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .edge-plate .big.negative { color: var(--muted); }
+  .edge-plate .details {
+    color: var(--muted2); font-size: 11px;
+    display: flex; gap: 14px;
+  }
+  .edge-plate .details span b { color: var(--text); font-weight: 500; }
+
+  /* Controls */
+  .controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .controls label {
+    font-size: 11px; color: var(--muted); letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .controls input[type="range"] { width: 220px; accent-color: var(--accent); }
+  .controls input[type="number"], .controls select {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  }
+  .controls button {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text);
+    padding: 5px 14px; cursor: pointer; font-family: inherit; font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .controls button.primary {
+    background: var(--accent); border-color: var(--accent); color: #0a1814;
+    font-weight: 600;
+  }
+  .controls .val {
+    font-family: 'IBM Plex Mono', monospace; color: var(--text);
+    font-variant-numeric: tabular-nums; min-width: 50px; display: inline-block;
+  }
+
+  .plot { width: 100%; height: 280px; }
+  .plot.tall { height: 360px; }
+
+  .hidden { display: none !important; }
+  .dot-green, .dot-red, .dot-yellow {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    vertical-align: middle; margin-right: 4px; margin-left: 6px;
+  }
+  .dot-green  { background: var(--accent); }
+  .dot-red    { background: var(--loss); }
+  .dot-yellow { background: var(--warn); }
+  .stamp { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="title"><span class="dot"></span>quant-os</div>
+  <div class="right">
+    <span class="status"><span class="stamp">collectors</span> <b id="collector-dot">—</b></span>
+    <span class="status mono" id="current-time">—</span>
+    <button class="theme-toggle" id="theme-toggle">LIGHT</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabnav">
+  <div class="tab active" data-tab="live">LIVE</div>
+  <div class="tab"        data-tab="arb">ARB</div>
+  <div class="tab"        data-tab="backtest">BACKTEST</div>
+</nav>
+
+<main>
+
+  <!-- ═════════════════════════════ LIVE TAB ═════════════════════════════ -->
+  <section id="tab-live">
+    <div class="grid-4">
+      <div class="metric">
+        <div class="label">Cross-Exchange Spread</div>
+        <div class="value num" id="m-spread">—</div>
+        <div class="sub mono">Kalshi mid − Poly mid</div>
+      </div>
+      <div class="metric">
+        <div class="label">Open Hedged Arbs</div>
+        <div class="value num" id="m-open-arbs">—</div>
+        <div class="sub mono" id="m-open-arbs-sub">— locked</div>
+      </div>
+      <div class="metric teal" id="m-today-pnl-wrap">
+        <div class="label">Today's P&amp;L</div>
+        <div class="value num" id="m-today-pnl">—</div>
+        <div class="sub mono">Realized, all strategies, UTC day</div>
+      </div>
+      <div class="metric">
+        <div class="label">Capital Deployed</div>
+        <div class="value num" id="m-deployed">—</div>
+        <div class="sub mono" id="m-deployed-sub">— paper equity</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Active Window · Top-of-Book + Arb Edge</h3>
+      <div class="book" id="book">
+        <div class="side">
+          <div class="exch">Kalshi · <span class="mono" id="book-kalshi-ticker">—</span></div>
+          <div class="row yes"><span class="tag-book">YES ask</span><span class="px" id="k-yes-ask">—</span><span class="px" id="k-yes-bid">—</span></div>
+          <div class="row no"> <span class="tag-book">NO  ask</span><span class="px" id="k-no-ask">—</span><span class="px" id="k-no-bid">—</span></div>
+          <div class="row" style="color:var(--muted); font-size: 10px; margin-top: 4px;"><span></span><span class="px">ask</span><span class="px">bid</span></div>
+        </div>
+        <div class="side">
+          <div class="exch">Polymarket · <span class="mono" id="book-poly-ticker">—</span></div>
+          <div class="row yes"><span class="tag-book">UP  ask</span><span class="px" id="p-up-ask">—</span><span class="px" id="p-up-bid">—</span></div>
+          <div class="row no"> <span class="tag-book">DOWN ask</span><span class="px" id="p-down-ask">—</span><span class="px" id="p-down-bid">—</span></div>
+          <div class="row" style="color:var(--muted); font-size: 10px; margin-top: 4px;"><span></span><span class="px">ask</span><span class="px">bid</span></div>
+        </div>
+        <div class="edge-plate">
+          <div>
+            <div class="stamp">NET EDGE</div>
+            <div class="big" id="edge-cents">—</div>
+          </div>
+          <div class="details" id="edge-details">—</div>
+        </div>
+      </div>
+      <p class="caption">Single top-of-book per venue (CLOB depth is not collected).
+        Edge = $1.00 − p<sub>yes_leg</sub> − p<sub>no_leg</sub> − fees, picking whichever hedge direction is larger.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Spread Path · Last 120 ticks (¢)</h3>
+      <div id="spread-sparkline" class="plot" style="height: 160px;"></div>
+      <p class="caption">Cross-exchange mid-price spread, 60s interval. Zero line = venues agree.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Open Hedged Trades</h3>
+        <div style="max-height:280px; overflow:auto;">
+          <table class="grid" id="tbl-open">
+            <thead><tr>
+              <th>Opened UTC</th><th>Dir</th><th class="num">Edge ¢</th>
+              <th>Kalshi</th><th>Poly</th><th class="num">TTL</th>
+            </tr></thead>
+            <tbody><tr class="dim"><td colspan="6">—</td></tr></tbody>
+          </table>
+        </div>
+        <p class="caption">Auto-refreshes every 10s. TTL = seconds until contract resolution.</p>
+      </div>
+      <div class="panel">
+        <h3>Recent Closed · Last 20</h3>
+        <div style="max-height:280px; overflow:auto;">
+          <table class="grid" id="tbl-closed">
+            <thead><tr>
+              <th>Closed UTC</th><th>Dir</th><th class="num">Net Edge ¢</th>
+              <th class="num">Realized</th><th>Outcome</th>
+            </tr></thead>
+            <tbody><tr class="dim"><td colspan="5">—</td></tr></tbody>
+          </table>
+        </div>
+        <p class="caption">Resolution pulled from btc_labels_15m at each contract's close_time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════ ARB TAB ══════════════════════════════ -->
+  <section id="tab-arb" class="hidden">
+    <div class="panel">
+      <h3>min_edge Slider · Live Re-Run of Historical Backtest</h3>
+      <div class="controls">
+        <label for="arb-slider">min_edge</label>
+        <input type="range" id="arb-slider" min="0.0" max="0.05" step="0.001" value="0.01">
+        <span class="val" id="arb-slider-val">1.0¢</span>
+        <button class="primary" id="arb-slider-run">RE-RUN</button>
+        <span class="stamp" id="arb-slider-stamp">—</span>
+      </div>
+      <div class="grid-4" style="margin-top: 12px;">
+        <div class="metric teal">
+          <div class="label">Net PnL (realised)</div>
+          <div class="value num" id="ab-net-pnl">—</div>
+          <div class="sub mono" id="ab-net-pnl-sub">—</div>
+        </div>
+        <div class="metric">
+          <div class="label">Trades Opened</div>
+          <div class="value num" id="ab-trades">—</div>
+          <div class="sub mono" id="ab-trades-sub">— opportunities</div>
+        </div>
+        <div class="metric">
+          <div class="label">Capture Rate</div>
+          <div class="value num" id="ab-capture">—</div>
+          <div class="sub mono">After 90s TTL guard</div>
+        </div>
+        <div class="metric">
+          <div class="label">Sharpe (per-trade, annlzd)</div>
+          <div class="value num" id="ab-sharpe">—</div>
+          <div class="sub mono">√(35,040 windows/year)</div>
+        </div>
+      </div>
+      <p class="caption">Dragging the slider re-runs the entire historical backtest. Every number above recomputes from scratch.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Net-Edge Distribution · 0.5¢ buckets</h3>
+        <div id="arb-histogram" class="plot tall"></div>
+        <p class="caption">X: net edge in cents. Y: joint ticks. Bars right of 0 = profitable instants.</p>
+      </div>
+      <div class="panel">
+        <h3>Opportunity Persistence · 60s ticks</h3>
+        <div id="arb-persistence" class="plot tall"></div>
+        <p class="caption">Consecutive ticks each opportunity survived at current min_edge. Short runs = speed matters.</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Daily P&amp;L · Paper</h3>
+        <div id="arb-daily" class="plot"></div>
+        <p class="caption">Sum of realized_pnl per UTC day from hedged_arb_trades.</p>
+      </div>
+      <div class="panel">
+        <h3>Top 10 Arbs · Last 7 Days</h3>
+        <div style="max-height:280px; overflow:auto;">
+          <table class="grid" id="tbl-top-arbs">
+            <thead><tr>
+              <th>Opened UTC</th><th>Dir</th><th class="num">Net ¢</th>
+              <th class="num">Contracts</th><th class="num">Locked</th><th class="num">Realized</th>
+            </tr></thead>
+            <tbody><tr class="dim"><td colspan="6">—</td></tr></tbody>
+          </table>
+        </div>
+        <p class="caption">Sorted by locked_pnl = contracts × net edge at entry.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ BACKTEST TAB ═══════════════════════════ -->
+  <section id="tab-backtest" class="hidden">
+    <div class="panel">
+      <h3>Unified Backtester</h3>
+      <div class="controls">
+        <label for="bt-strategy">strategy</label>
+        <select id="bt-strategy"></select>
+        <span id="bt-params-hedged" class="controls" style="gap:8px;">
+          <label>min_edge</label>
+          <input type="number" step="0.001" min="0" max="0.2" value="0.01" id="bt-min-edge" style="width:70px">
+          <label>$/leg</label>
+          <input type="number" step="100" min="50" max="5000" value="500" id="bt-size" style="width:80px">
+        </span>
+        <span id="bt-params-mc" class="controls hidden" style="gap:8px;">
+          <label>sims</label>
+          <input type="number" step="100" min="100" max="5000" value="500" id="bt-n" style="width:70px">
+          <label>lookback</label>
+          <input type="number" step="50" min="50" max="2000" value="250" id="bt-lookback" style="width:80px">
+        </span>
+        <button class="primary" id="bt-run">RUN</button>
+        <span class="stamp" id="bt-stamp">—</span>
+      </div>
+      <p class="caption">
+        Dispatches on strategy. hedged_cross_arb: deterministic walk over all joint ticks.
+        spread_arb / momentum_fade: block-bootstrap Monte Carlo.
+        ML strategies: summary of paper_model_predictions.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>Result</h3>
+      <div id="bt-metric-row" class="grid-4"></div>
+      <div id="bt-plot" class="plot tall" style="margin-top: 10px;"></div>
+      <pre id="bt-raw" class="mono" style="font-size: 10.5px; color: var(--muted2); max-height: 260px; overflow: auto; margin-top: 8px; background: var(--bg2); padding: 8px; border: 1px solid var(--border);"></pre>
+      <p class="caption">Equity path renders when the strategy returns one. Raw JSON below for verification.</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const ACCENT = css('--accent');
+const LOSS   = css('--loss');
+const MUTED  = css('--muted');
+const BORDER = css('--border');
+const TEXT   = css('--text');
+
+const BASE_LAYOUT = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor:  'rgba(0,0,0,0)',
+  font: { family: 'IBM Plex Mono, monospace', size: 11, color: TEXT },
+  margin: { l: 48, r: 12, t: 8, b: 36 },
+  xaxis: { gridcolor: BORDER, linecolor: BORDER, zerolinecolor: BORDER, tickfont: { size: 10 } },
+  yaxis: { gridcolor: BORDER, linecolor: BORDER, zerolinecolor: BORDER, tickfont: { size: 10 } },
+  showlegend: false,
+};
+const PLOT_CONFIG = { displayModeBar: false, responsive: true };
+
+function fmtMoney(x, digits=2) {
+  if (x === null || x === undefined || Number.isNaN(x)) return '—';
+  const sign = x < 0 ? '−' : (x > 0 ? '+' : '');
+  return `${sign}$${Math.abs(x).toLocaleString(undefined, {minimumFractionDigits: digits, maximumFractionDigits: digits})}`;
+}
+function fmtCents(x, digits=2) {
+  if (x === null || x === undefined || Number.isNaN(x)) return '—';
+  const sign = x < 0 ? '−' : (x > 0 ? '+' : '');
+  return `${sign}${Math.abs(x).toFixed(digits)}¢`;
+}
+function fmtPct(x, digits=1) {
+  if (x === null || x === undefined || Number.isNaN(x)) return '—';
+  return `${(x * 100).toFixed(digits)}%`;
+}
+function fmtInt(x) {
+  if (x === null || x === undefined || Number.isNaN(x)) return '—';
+  return Number(x).toLocaleString();
+}
+function fmtTimeUTC(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toISOString().replace('T',' ').slice(11,19); }
+  catch (e) { return iso; }
+}
+function fmtDateTimeUTC(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toISOString().replace('T',' ').slice(5,19); }
+  catch (e) { return iso; }
+}
+function signClass(x) {
+  if (x === null || x === undefined || Number.isNaN(x)) return 'muted';
+  return x > 0 ? 'pos' : (x < 0 ? 'neg' : 'muted');
+}
+
+/* Clock + theme */
+setInterval(() => {
+  document.getElementById('current-time').textContent =
+    new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
+}, 1000);
+document.getElementById('current-time').textContent =
+  new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const root = document.documentElement;
+  const nxt = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', nxt);
+  document.getElementById('theme-toggle').textContent = nxt === 'dark' ? 'LIGHT' : 'DARK';
+});
+
+/* Tab routing */
+document.querySelectorAll('nav.tabs .tab').forEach(el => {
+  el.addEventListener('click', () => setTab(el.dataset.tab));
+});
+function setTab(name) {
+  document.querySelectorAll('nav.tabs .tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === name));
+  ['live','arb','backtest'].forEach(t =>
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
+  if      (name === 'live')     loadLive();
+  else if (name === 'arb')      loadArb();
+  else if (name === 'backtest') loadBacktest();
+}
+
+/* Fetch helper */
+async function jfetch(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: ${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+/* ── LIVE tab ────────────────────────────────────────────────────────────── */
+
+async function loadLive() {
+  try {
+    await Promise.all([
+      loadOverview(), loadOrderbook(), loadHedgedTrades(),
+      loadSpreadSparkline(), loadHealth(),
+    ]);
+  } catch (e) { console.error('loadLive', e); }
+}
+setInterval(() => {
+  if (!document.getElementById('tab-live').classList.contains('hidden')) loadLive();
+}, 10_000);
+
+async function loadHealth() {
+  try {
+    const h = await jfetch('/api/health');
+    const cls = (s) => s === 'ok' ? 'dot-green' : (s === 'stale' ? 'dot-yellow' : 'dot-red');
+    document.getElementById('collector-dot').innerHTML =
+      `<span class="${cls(h.kalshi?.status)}"></span>Kalshi` +
+      `<span class="${cls(h.polymarket?.status)}"></span>Poly`;
+  } catch (e) {}
+}
+
+async function loadOverview() {
+  const d = await jfetch('/api/live/overview');
+  document.getElementById('m-spread').textContent = fmtCents(d.cross_spread_cents);
+  document.getElementById('m-open-arbs').textContent = fmtInt(d.open_hedge_count);
+  document.getElementById('m-open-arbs-sub').textContent =
+    fmtMoney(d.locked_pnl_open) + ' locked';
+
+  const tp = document.getElementById('m-today-pnl');
+  const tpWrap = document.getElementById('m-today-pnl-wrap');
+  tp.textContent = fmtMoney(d.today_pnl_usd);
+  tpWrap.classList.toggle('loss', d.today_pnl_usd < 0);
+  tpWrap.classList.toggle('teal', d.today_pnl_usd >= 0);
+
+  document.getElementById('m-deployed').textContent = fmtMoney(d.deployed_usd);
+  document.getElementById('m-deployed-sub').textContent =
+    fmtMoney(d.paper_equity_total, 0) + ' paper equity';
+}
+
+async function loadOrderbook() {
+  const d = await jfetch('/api/live/orderbook');
+  const setT = (id, v, digits=4) => {
+    document.getElementById(id).textContent =
+      (v === null || v === undefined) ? '—' : Number(v).toFixed(digits);
+  };
+  document.getElementById('book-kalshi-ticker').textContent = d.kalshi?.ticker ?? '—';
+  document.getElementById('book-poly-ticker').textContent   = d.polymarket?.ticker ?? '—';
+  setT('k-yes-ask', d.kalshi?.yes_ask_dollars);
+  setT('k-yes-bid', d.kalshi?.yes_bid_dollars);
+  setT('k-no-ask',  d.kalshi?.no_ask_dollars);
+  setT('k-no-bid',  d.kalshi?.no_bid_dollars);
+  setT('p-up-ask',  d.polymarket?.up_ask);
+  setT('p-up-bid',  d.polymarket?.up_bid);
+  setT('p-down-ask', d.polymarket?.down_ask);
+  setT('p-down-bid', d.polymarket?.down_bid);
+
+  const big = document.getElementById('edge-cents');
+  const det = document.getElementById('edge-details');
+  if (d.arb_signal && d.arb_signal.net_edge_cents > 0) {
+    big.textContent = fmtCents(d.arb_signal.net_edge_cents);
+    big.classList.remove('negative');
+    det.innerHTML = `
+      <span>dir <b>${d.arb_signal.direction}</b></span>
+      <span>kalshi <b>${d.arb_signal.kalshi_side} @ ${d.arb_signal.kalshi_price}</b></span>
+      <span>poly <b>${d.arb_signal.poly_side} @ ${d.arb_signal.poly_price}</b></span>
+      <span>contracts <b>${fmtInt(d.arb_signal.contracts)}</b></span>
+      <span>locked <b>${fmtMoney(d.arb_signal.locked_pnl)}</b></span>`;
+  } else {
+    big.textContent = d.arb_signal ? fmtCents(d.arb_signal.net_edge_cents) : 'flat';
+    big.classList.add('negative');
+    det.innerHTML = `<span>no positive-edge hedge at current prices</span>`;
+  }
+}
+
+async function loadHedgedTrades() {
+  const d = await jfetch('/api/live/hedged');
+  const open = d.open_trades || [];
+  const closed = d.closed_trades || [];
+
+  const tbOpen = document.querySelector('#tbl-open tbody');
+  tbOpen.innerHTML = open.length ? open.map(t => `
+    <tr>
+      <td class="mono">${fmtDateTimeUTC(t.opened_at)}</td>
+      <td><span class="tag">${t.direction}</span></td>
+      <td class="num mono pos">${fmtCents(t.net_edge_at_entry * 100)}</td>
+      <td class="mono">${t.kalshi_side}@${Number(t.kalshi_entry_price).toFixed(3)} ×${fmtInt(t.kalshi_contracts)}</td>
+      <td class="mono">${t.poly_side}@${Number(t.poly_entry_price).toFixed(3)} ×${fmtInt(t.poly_contracts)}</td>
+      <td class="num mono muted">${Math.max(0, Math.round((new Date(t.close_time) - new Date())/1000))}s</td>
+    </tr>`).join('') : `<tr class="dim"><td colspan="6">no open hedged positions</td></tr>`;
+
+  const tbClosed = document.querySelector('#tbl-closed tbody');
+  tbClosed.innerHTML = closed.length ? closed.map(t => `
+    <tr>
+      <td class="mono">${fmtDateTimeUTC(t.closed_at)}</td>
+      <td><span class="tag">${t.direction}</span></td>
+      <td class="num mono">${fmtCents(t.net_edge_at_entry * 100)}</td>
+      <td class="num mono ${signClass(t.realized_pnl)}">${fmtMoney(t.realized_pnl)}</td>
+      <td class="muted">${t.resolution || '—'}</td>
+    </tr>`).join('') : `<tr class="dim"><td colspan="5">no resolved trades yet</td></tr>`;
+}
+
+async function loadSpreadSparkline() {
+  const data = await jfetch('/api/live/spread-history?n=120');
+  if (!data.length) {
+    document.getElementById('spread-sparkline').innerHTML =
+      '<div style="color:var(--muted); font-size: 11px; padding: 20px 0; text-align:center;">no joint-tick data</div>';
+    return;
+  }
+  const trace = {
+    x: data.map(d => d.ts), y: data.map(d => d.spread_cents),
+    type: 'scatter', mode: 'lines',
+    line: { color: ACCENT, width: 1.4 },
+    hovertemplate: '%{x|%H:%M:%S} · %{y:.2f}¢<extra></extra>',
+  };
+  Plotly.newPlot('spread-sparkline', [trace], {
+    ...BASE_LAYOUT,
+    margin: { l: 40, r: 10, t: 4, b: 26 },
+    yaxis: { ...BASE_LAYOUT.yaxis, title: { text: '¢', font: { size: 10 }} },
+    shapes: [{ type: 'line', xref: 'paper', yref: 'y', x0: 0, x1: 1, y0: 0, y1: 0,
+               line: { color: MUTED, width: 0.7, dash: 'dot' }}],
+  }, PLOT_CONFIG);
+}
+
+/* ── ARB tab ─────────────────────────────────────────────────────────────── */
+
+let _arbLoadedOnce = false;
+async function loadArb() {
+  if (_arbLoadedOnce) return;
+  _arbLoadedOnce = true;
+  await runArbSliderBacktest();
+  await Promise.all([ loadArbHistogram(), loadArbPersistence(), loadArbDailyPnl(), loadArbTopTrades() ]);
+}
+document.getElementById('arb-slider').addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('arb-slider-val').textContent = `${(v * 100).toFixed(1)}¢`;
+});
+document.getElementById('arb-slider-run').addEventListener('click', runArbSliderBacktest);
+
+async function runArbSliderBacktest() {
+  const min_edge = parseFloat(document.getElementById('arb-slider').value);
+  const stamp = document.getElementById('arb-slider-stamp');
+  stamp.textContent = 'running…';
+  try {
+    const r = await jfetch(`/api/arb/live-backtest?min_edge=${min_edge}`);
+    document.getElementById('ab-net-pnl').textContent = fmtMoney(r.net_pnl_realized);
+    document.getElementById('ab-net-pnl-sub').textContent =
+      `${fmtInt(r.trades_resolved)} resolved of ${fmtInt(r.trades_opened)}`;
+    document.getElementById('ab-trades').textContent = fmtInt(r.trades_opened);
+    document.getElementById('ab-trades-sub').textContent = `${fmtInt(r.opportunities_detected)} opps`;
+    document.getElementById('ab-capture').textContent = fmtPct(r.capture_rate);
+    document.getElementById('ab-sharpe').textContent =
+      r.sharpe_per_trade_annualised ? r.sharpe_per_trade_annualised.toFixed(2) : '—';
+    stamp.textContent = `ran at ${fmtTimeUTC(new Date().toISOString())} UTC`;
+    loadArbPersistence(min_edge);
+  } catch (e) { stamp.textContent = 'error: ' + e.message; }
+}
+
+async function loadArbHistogram() {
+  const h = await jfetch('/api/arb/histogram');
+  const colors = h.buckets_cents.map(b => b >= 1 ? ACCENT : (b > 0 ? '#5ABA93' : MUTED));
+  Plotly.newPlot('arb-histogram', [{
+    x: h.buckets_cents, y: h.counts, type: 'bar',
+    marker: { color: colors }, hovertemplate: '%{x:.1f}¢ · %{y}<extra></extra>',
+  }], {
+    ...BASE_LAYOUT,
+    xaxis: { ...BASE_LAYOUT.xaxis, title: { text: 'net edge (¢)', font: { size: 11 } }},
+    yaxis: { ...BASE_LAYOUT.yaxis, title: { text: 'joint ticks',  font: { size: 11 } }},
+    bargap: 0.08,
+  }, PLOT_CONFIG);
+}
+
+async function loadArbPersistence(min_edge = 0.01) {
+  const h = await jfetch(`/api/arb/persistence?min_edge=${min_edge}`);
+  Plotly.newPlot('arb-persistence', [{
+    x: h.run_lengths_ticks, y: h.counts, type: 'bar',
+    marker: { color: ACCENT },
+    hovertemplate: '%{x} ticks · %{y} runs<extra></extra>',
+  }], {
+    ...BASE_LAYOUT,
+    xaxis: { ...BASE_LAYOUT.xaxis, title: { text: 'run length (60s ticks)', font: { size: 11 } }},
+    yaxis: { ...BASE_LAYOUT.yaxis, title: { text: 'runs',                   font: { size: 11 } }},
+    bargap: 0.08,
+  }, PLOT_CONFIG);
+}
+
+async function loadArbDailyPnl() {
+  const rows = await jfetch('/api/arb/daily-pnl');
+  if (!rows.length) {
+    document.getElementById('arb-daily').innerHTML =
+      '<div style="color:var(--muted); font-size: 11px; padding: 20px 0; text-align:center;">no resolved hedged arbs yet</div>';
+    return;
+  }
+  Plotly.newPlot('arb-daily', [{
+    x: rows.map(r => r.day), y: rows.map(r => r.pnl), type: 'bar',
+    marker: { color: rows.map(r => r.pnl >= 0 ? ACCENT : LOSS) },
+    hovertemplate: '%{x} · $%{y:,.2f}<extra></extra>',
+  }], {
+    ...BASE_LAYOUT,
+    xaxis: { ...BASE_LAYOUT.xaxis, title: { text: 'UTC day',    font: { size: 11 } }},
+    yaxis: { ...BASE_LAYOUT.yaxis, title: { text: 'realized $', font: { size: 11 } }},
+    bargap: 0.2,
+  }, PLOT_CONFIG);
+}
+
+async function loadArbTopTrades() {
+  const rows = await jfetch('/api/arb/top-trades');
+  const tb = document.querySelector('#tbl-top-arbs tbody');
+  tb.innerHTML = rows.length ? rows.map(r => `
+    <tr>
+      <td class="mono">${fmtDateTimeUTC(r.opened_at)}</td>
+      <td><span class="tag">${r.direction}</span></td>
+      <td class="num mono pos">${fmtCents(r.net_edge_at_entry * 100)}</td>
+      <td class="num mono">${fmtInt(r.kalshi_contracts)}</td>
+      <td class="num mono">${fmtMoney(r.locked_pnl)}</td>
+      <td class="num mono ${signClass(r.realized_pnl)}">${r.realized_pnl !== null ? fmtMoney(r.realized_pnl) : '—'}</td>
+    </tr>`).join('') : '<tr class="dim"><td colspan="6">no trades in last 7 days</td></tr>';
+}
+
+/* ── BACKTEST tab ────────────────────────────────────────────────────────── */
+
+let _btLoadedOnce = false;
+async function loadBacktest() {
+  if (_btLoadedOnce) return;
+  _btLoadedOnce = true;
+  const s = await jfetch('/api/backtest/strategies');
+  const sel = document.getElementById('bt-strategy');
+  sel.innerHTML = s.available.map(x =>
+    `<option value="${x}"${x === s.default ? ' selected' : ''}>${x}</option>`).join('');
+  sel.addEventListener('change', updateBtParamsVisibility);
+  document.getElementById('bt-run').addEventListener('click', runBacktest);
+  updateBtParamsVisibility();
+}
+function updateBtParamsVisibility() {
+  const strat = document.getElementById('bt-strategy').value;
+  document.getElementById('bt-params-hedged').classList.toggle('hidden', strat !== 'hedged_cross_arb');
+  document.getElementById('bt-params-mc').classList.toggle('hidden', !(strat === 'spread_arb' || strat === 'momentum_fade'));
+}
+
+async function runBacktest() {
+  const strat = document.getElementById('bt-strategy').value;
+  const stamp = document.getElementById('bt-stamp');
+  stamp.textContent = 'running…';
+  const params = { strategy: strat };
+  if (strat === 'hedged_cross_arb') {
+    params.min_edge    = document.getElementById('bt-min-edge').value;
+    params.dollar_size = document.getElementById('bt-size').value;
+  } else if (strat === 'spread_arb' || strat === 'momentum_fade') {
+    params.n        = document.getElementById('bt-n').value;
+    params.lookback = document.getElementById('bt-lookback').value;
+  }
+  try {
+    const r = await jfetch('/api/backtest/run?' + new URLSearchParams(params).toString());
+    renderBacktestResult(r);
+    stamp.textContent = `${strat} · ${fmtTimeUTC(r.run_at || new Date().toISOString())} UTC`;
+  } catch (e) { stamp.textContent = 'error: ' + e.message; }
+}
+
+function renderBacktestResult(r) {
+  const m = (label, value, sub='', cls='') =>
+    `<div class="metric ${cls}"><div class="label">${label}</div><div class="value num">${value}</div><div class="sub mono">${sub}</div></div>`;
+  const row  = document.getElementById('bt-metric-row');
+  const plot = document.getElementById('bt-plot');
+  const raw  = document.getElementById('bt-raw');
+  let cards = '';
+
+  if (r.engine === 'monte_carlo_block_bootstrap') {
+    cards = [
+      m('Median equity', fmtMoney(r.median_final_equity), `p10 ${fmtMoney(r.p10_equity)} · p90 ${fmtMoney(r.p90_equity)}`, 'teal'),
+      m('Max DD (median)', fmtPct(r.max_drawdown_median)),
+      m('Win rate',        fmtPct(r.win_rate)),
+      m('Sharpe',          r.sharpe ? r.sharpe.toFixed(3) : '—', `${fmtInt(r.n_trades_total)} trades · ${fmtInt(r.n_simulations)} sims`),
+    ].join('');
+    renderEquityFan(plot, r.equity_paths || []);
+  } else if (r.strategy === 'hedged_cross_arb') {
+    cards = [
+      m('Net PnL (realised)', fmtMoney(r.net_pnl_realized),   `${fmtInt(r.trades_resolved)} resolved`, 'teal'),
+      m('Gross PnL (locked)', fmtMoney(r.gross_pnl_locked),   `${fmtInt(r.trades_opened)} trades opened`),
+      m('Capture rate',       fmtPct(r.capture_rate)),
+      m('Sharpe (annlzd)',    r.sharpe_per_trade_annualised ? r.sharpe_per_trade_annualised.toFixed(2) : '—', `${fmtInt(r.joint_windows_total)} joint windows`),
+    ].join('');
+    renderEquityLine(plot, r.equity_curve || []);
+  } else {
+    cards = [
+      m('Cumulative PnL', fmtMoney(r.cumulative_pnl || 0, 4), `${fmtInt(r.n_resolved)} resolved / ${fmtInt(r.n_predictions)} predictions`, 'teal'),
+      m('Win rate',       fmtPct(r.win_rate)),
+      m('Engine',         r.engine || '—'),
+      m('Strategy',       r.strategy || '—'),
+    ].join('');
+    plot.innerHTML = '<div style="color:var(--muted); font-size: 11px; padding: 20px 0; text-align:center;">no equity curve for this engine</div>';
+  }
+  row.innerHTML = cards;
+
+  const trimmed = {};
+  for (const k in r) {
+    if (['equity_paths','equity_curve','trades','edge_histogram','recent'].includes(k)) continue;
+    trimmed[k] = r[k];
+  }
+  raw.textContent = JSON.stringify(trimmed, null, 2);
+}
+
+function renderEquityFan(el, paths) {
+  if (!paths || !paths.length) {
+    el.innerHTML = '<div style="color:var(--muted); font-size: 11px; padding: 20px 0; text-align:center;">no equity paths</div>';
+    return;
+  }
+  Plotly.newPlot(el, paths.map(p => ({
+    y: p, type: 'scatter', mode: 'lines',
+    line: { color: ACCENT, width: 0.8 }, opacity: 0.12, hoverinfo: 'skip',
+  })), {
+    ...BASE_LAYOUT,
+    xaxis: { ...BASE_LAYOUT.xaxis, title: { text: 'tick',     font: { size: 11 } }},
+    yaxis: { ...BASE_LAYOUT.yaxis, title: { text: 'equity $', font: { size: 11 } }},
+  }, PLOT_CONFIG);
+}
+function renderEquityLine(el, curve) {
+  if (!curve || !curve.length) {
+    el.innerHTML = '<div style="color:var(--muted); font-size: 11px; padding: 20px 0; text-align:center;">no equity curve</div>';
+    return;
+  }
+  Plotly.newPlot(el, [{
+    x: curve.map((_,i) => i), y: curve, type: 'scatter', mode: 'lines',
+    line: { color: ACCENT, width: 1.5 },
+    hovertemplate: 'trade #%{x} · $%{y:,.2f}<extra></extra>',
+  }], {
+    ...BASE_LAYOUT,
+    xaxis: { ...BASE_LAYOUT.xaxis, title: { text: 'resolved trade #', font: { size: 11 } }},
+    yaxis: { ...BASE_LAYOUT.yaxis, title: { text: 'cum realized $',   font: { size: 11 } }},
+  }, PLOT_CONFIG);
+}
+
+/* Initial load */
+loadLive();
+</script>
+</body>
+</html>

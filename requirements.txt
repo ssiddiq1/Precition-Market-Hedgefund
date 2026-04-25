@@ -1,0 +1,9 @@
+flask
+joblib
+matplotlib
+numpy
+pandas
+requests
+websocket-client
+scikit-learn
+scipy
